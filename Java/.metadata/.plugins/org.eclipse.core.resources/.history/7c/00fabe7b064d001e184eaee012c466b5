@@ -1,0 +1,254 @@
+package webshop;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.IllegalFormatException;
+import java.util.Scanner;
+
+public class Questions {
+	
+	Scanner sc = new Scanner(System.in);
+	
+	private String query;
+	private ResultSet resultSet;
+	
+	public void choice_one(Statement statement) {
+		Character s = null;
+		String size;
+		String color = null;
+		String category_name;
+		String first_name;
+		String last_name;
+		String brand;
+		
+		try {
+			System.out.println("What size do you want to sort by: 'M' or 'L' ?");
+			s = sc.next().charAt(0);
+			Character temp = Character.toUpperCase(s);
+			s = temp;
+			sc.nextLine();
+			if(!(s.equals('M')) && !(s.equals('L'))) {
+				System.out.println("Only M or L");
+				choice_one(statement);
+			}			
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+		while(color == null) {
+			if(s.equals('M')) {
+				System.out.println("What color do you want to sort by: 'Black', 'Yellow', 'Red'");
+				try {
+					color = sc.nextLine();
+					String temp = color.substring(0, 1).toUpperCase() + color.substring(1);
+					color = temp;
+					if(!color.equals("Black") && !color.equals("Yellow") && !color.equals("Red")) {
+						color = null;
+					}
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+			}else if(s.equals('L')) {
+				System.out.println("What color do you want to sort by: 'Blue','White'");
+				try {
+					color = sc.nextLine();
+					String temp = color.substring(0, 1).toUpperCase() + color.substring(1);
+					color = temp;
+					if(!color.equals("Blue") && !color.equals("White")) {
+						color = null;
+					}
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+			}			
+		}
+		
+		size = String.valueOf(s);
+		
+		query = "SELECT DISTINCT c.f_name, c.l_name, pc.color, cat.category_name, pc.size, p.brand\r\n"
+				+ "FROM Customer c\r\n"
+				+ "JOIN Orders o ON c.customer_id = o.customer_id\r\n"
+				+ "JOIN Order_Specs os ON o.order_id = os.order_id\r\n"
+				+ "JOIN Product_choice pc ON os.choice_id = pc.choice_id\r\n"
+				+ "JOIN Product p ON pc.product_id = p.product_id\r\n"
+				+ "JOIN CPR cpr ON p.product_id = cpr.product_id\r\n"
+				+ "JOIN Category cat ON cpr.category_id = cat.category_id\r\n"
+				+ "WHERE pc.size = '" + size + "' AND pc.color = '" + color + "'";
+		try {
+			resultSet = statement.executeQuery(query);
+			
+			while(resultSet.next()) {
+				first_name = resultSet.getString("f_name");
+				last_name = resultSet.getString("l_name");
+				color = resultSet.getString("color");
+				category_name = resultSet.getString("category_name");
+				size = resultSet.getString("size");
+				brand = resultSet.getString("brand");
+				
+				System.out.println("Name: " + first_name + " " + last_name);
+				System.out.println("Color: " + color);
+				System.out.println("Size: " + size);
+				System.out.println("Brand: " + brand);
+				System.out.println("Category: " + category_name);
+				
+				System.out.println("-------------------------------------");
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void choice_two(Statement statement) {
+		String category_name;
+		String product_count;
+		String total_quantity;
+		
+		query = "SELECT c.category_name, COUNT(p.product_id) AS product_count, SUM(p.quantity) AS total_quantity\r\n"
+				+ "FROM Category c LEFT JOIN CPR cp ON c.category_id = cp.category_id\r\n"
+				+ "LEFT JOIN Product p ON cp.product_id = p.product_id GROUP BY c.category_name;";
+		try {
+			resultSet = statement.executeQuery(query);
+			
+			System.out.println("-------------------------------------");
+			System.out.println("Category | Unique Products | Quantity");
+			System.out.println("-------------------------------------");
+			while(resultSet.next()) {
+				category_name = resultSet.getString("category_name");
+				product_count = resultSet.getString("product_count");
+				total_quantity = resultSet.getString("total_quantity");
+				
+				if (category_name.length() > 10) {
+			        category_name = category_name.substring(0, 11);
+			    }
+				
+				System.out.println(String.format("%-15s %-15s %s", category_name, product_count, total_quantity));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void choice_three(Statement statement) {
+		String first_name;
+		String last_name;
+		String name;
+		int amount;
+		
+		query = "SELECT c.customer_id, c.f_name, c.l_name, SUM(o.price) AS amount_spent\r\n"
+				+ "FROM Customer c JOIN Orders o ON c.customer_id = o.customer_id\r\n"
+				+ "GROUP BY c.customer_id, c.f_name, c.l_name ORDER BY amount_spent DESC;";
+		try {
+			resultSet = statement.executeQuery(query);
+			
+			System.out.println("-------------------------------------");
+			System.out.println("     Name      |      Amount Spent   ");
+			System.out.println("-------------------------------------");
+			while(resultSet.next()) {
+				first_name = resultSet.getString("f_name");
+				last_name = resultSet.getString("l_name");
+				amount = resultSet.getInt("amount_spent");
+				
+				name = first_name;
+				name.concat(" " + last_name);
+				
+				if (name.length() > 14) {
+			        name = name.substring(0, 15);
+			    }
+				
+				System.out.println(String.format("     %-20s %d", name, amount));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void choice_four(Statement statement) {
+		String city;
+		int amount_spent;
+		
+		query = "SELECT c.city, SUM(o.price) AS amount_spent FROM Customer c\r\n"
+				+ "JOIN Orders o ON c.customer_id = o.customer_id\r\n"
+				+ "GROUP BY c.city HAVING amount_spent > 999 ORDER BY amount_spent DESC;";
+		try {
+			resultSet = statement.executeQuery(query);
+			
+			System.out.println("-------------------------------------");
+			System.out.println("     City      |      Spent > 1000   ");
+			System.out.println("-------------------------------------");
+			while(resultSet.next()) {
+				city = resultSet.getString("city");
+				amount_spent = resultSet.getInt("amount_spent");
+				
+				if (city.length() > 12) {
+					city = city.substring(0, 13);
+			    }
+				
+				System.out.println(String.format("%-25s %d", city, amount_spent));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void choice_five(Statement statement) {
+		String product_name;
+		int i = 1;
+		
+		query = "SELECT p.product_name, SUM(os.quantity) AS quantity\r\n"
+				+ "FROM Product p JOIN Order_Specs os ON p.product_id = os.product_id\r\n"
+				+ "GROUP BY p.product_name ORDER BY quantity DESC LIMIT 5;";
+		try {
+			resultSet = statement.executeQuery(query);
+			
+			System.out.println("-----------------------------------------------------");
+			System.out.println("          Product         |           Ranking        ");
+			System.out.println("-----------------------------------------------------");
+			while(resultSet.next()) {
+				product_name = resultSet.getString("product_name");
+				
+				if (product_name.length() > 21) {
+					product_name = product_name.substring(0, 22);
+			    }
+				
+				System.out.println(String.format("%-40s %d", product_name, i++));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void choice_six(Statement statement) {
+		String month;
+		int amount;
+		
+		query = "WITH annualreport AS (\r\n"
+				+ "    SELECT DATE_FORMAT(o.order_date, '%Y-%m') AS month, SUM(os.quantity * p.price) AS amount_spent\r\n"
+				+ "    FROM Orders o LEFT JOIN Order_Specs os ON o.order_id = os.order_id\r\n"
+				+ "    LEFT JOIN Product p ON os.product_id = p.product_id\r\n"
+				+ "    WHERE YEAR(o.order_date) = 2023 GROUP BY Month\r\n"
+				+ ")\r\n"
+				+ "SELECT month, amount_spent FROM annualreport\r\n"
+				+ "WHERE amount_spent = (SELECT MAX(amount_spent) FROM annualreport)\r\n"
+				+ "OR amount_spent = (SELECT MIN(amount_spent) FROM annualreport);";
+		try {
+			resultSet = statement.executeQuery(query);
+			
+			System.out.println("------------------------------------");
+			System.out.println("     Product     |      Ranking     ");
+			System.out.println("------------------------------------");
+			while(resultSet.next()) {
+				month = resultSet.getString("month");
+				amount = resultSet.getInt("amount");
+				
+				if (month.length() > 6) {
+					month = month.substring(0, 7);
+			    }
+				
+				System.out.println(String.format("%-15s %d", month, amount));
+			}
+		} catch(SQLException e) {
+			e.printStackTrace();
+		}
+	}
+}
